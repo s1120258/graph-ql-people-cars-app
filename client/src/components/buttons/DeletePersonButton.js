@@ -9,9 +9,11 @@ const DeletePersonButton = ({ personId }) => {
       cache.modify({
         fields: {
           people(existingPeopleRefs = [], { readField }) {
-            return existingPeopleRefs.filter(
+            // Create a new array and filter out the person to be deleted
+            const newPeopleRefs = existingPeopleRefs.filter(
               (personRef) => readField("id", personRef) !== personId
             );
+            return newPeopleRefs;
           },
         },
       });
@@ -24,7 +26,7 @@ const DeletePersonButton = ({ personId }) => {
   };
 
   return (
-    <Button onClick={handleDelete} type="danger">
+    <Button onClick={handleDelete} danger>
       Delete Person
     </Button>
   );

@@ -10,18 +10,6 @@ const client = new ApolloClient({
   cache: new InMemoryCache(),
 });
 
-// const App = () => {
-//   return (
-//     <ApolloProvider client={client}>
-//       <div className='App'>
-//         <Title />
-//         <AddContact />
-//         <Contacts />
-//       </div>
-//     </ApolloProvider>
-//   )
-// }
-
 const App = () => {
   return (
     <ApolloProvider client={client}>
