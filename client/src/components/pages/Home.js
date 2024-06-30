@@ -3,7 +3,6 @@ import { useQuery, useMutation, gql } from "@apollo/client";
 import { Form, Input, Button, Card, Modal } from "antd";
 
 import EditPersonForm from "../forms/EditPersonForm";
-import DeletePersonButton from "../buttons/DeletePersonButton";
 import PersonDetails from "./PersonDetails";
 
 const GET_PEOPLE_AND_CARS = gql`
