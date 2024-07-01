@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { Form, Input, Button, Card, Modal } from "antd";
 
 import EditPersonForm from "../forms/EditPersonForm";
+import EditCarForm from "../forms/EditCarForm";
 import PersonDetails from "./PersonDetails";
 import CarForm from "../forms/CarForm";
 import {
   GET_PEOPLE_AND_CARS,
   ADD_PERSON,
   DELETE_PERSON,
+  DELETE_CAR,
 } from "../../graphql/queries";
 
 const Home = () => {
@@ -25,7 +27,23 @@ const Home = () => {
       });
     },
   });
+  const [deleteCar] = useMutation(DELETE_CAR, {
+    update(cache, { data: { deleteCar } }) {
+      const { people } = cache.readQuery({ query: GET_PEOPLE_AND_CARS });
+      cache.writeQuery({
+        query: GET_PEOPLE_AND_CARS,
+        data: {
+          people: people.map((person) => ({
+            ...person,
+            cars: person.cars.filter((car) => car.id !== deleteCar.id),
+          })),
+        },
+      });
+    },
+  });
+
   const [editingPersonId, setEditingPersonId] = useState(null);
+  const [editingCar, setEditingCar] = useState(null);
   const [selectedPersonId, setSelectedPersonId] = useState(null);
 
   if (loading) return <p>Loading...</p>;
@@ -46,6 +64,14 @@ const Home = () => {
 
   const handleDeletePerson = (personId) => {
     deletePerson({ variables: { id: personId } });
+  };
+
+  const handleDeleteCar = (carId) => {
+    deleteCar({ variables: { id: carId } });
+  };
+
+  const handleEditCar = (car) => {
+    setEditingCar(car);
   };
 
   const handleViewDetails = (personId) => {
@@ -110,6 +136,10 @@ const Home = () => {
                   extra={`$${car.price}`}
                 >
                   <p>Year: {car.year}</p>
+                  <Button onClick={() => handleEditCar(car)}>Edit Car</Button>
+                  <Button onClick={() => handleDeleteCar(car.id)} danger>
+                    Delete Car
+                  </Button>
                 </Card>
               ))}
             </div>
@@ -127,6 +157,21 @@ const Home = () => {
           <EditPersonForm
             person={data.people.find((person) => person.id === editingPersonId)}
             onClose={() => setEditingPersonId(null)}
+          />
+        </Modal>
+      )}
+
+      {editingCar && (
+        <Modal
+          visible={!!editingCar}
+          title="Edit Car"
+          onCancel={() => setEditingCar(null)}
+          footer={null}
+        >
+          <EditCarForm
+            car={editingCar}
+            people={data.people}
+            onClose={() => setEditingCar(null)}
           />
         </Modal>
       )}

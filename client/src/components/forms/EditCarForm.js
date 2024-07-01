@@ -1,22 +1,71 @@
 import React from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import { useMutation, gql } from "@apollo/client";
 import { Form, Input, InputNumber, Button, Select } from "antd";
-import {
-  GET_PEOPLE,
-  UPDATE_CAR,
-  GET_PERSON_WITH_CARS,
-} from "../../graphql/queries";
+import { GET_PEOPLE_AND_CARS, UPDATE_CAR } from "../../graphql/queries";
 
-const { Option } = Select;
-
-const EditCarForm = ({ car, onClose }) => {
+const EditCarForm = ({ car, people, onClose }) => {
   const [updateCar] = useMutation(UPDATE_CAR, {
-    refetchQueries: [
-      { query: GET_PERSON_WITH_CARS, variables: { id: car.personId } },
-    ],
-  });
+    update(cache, { data: { updateCar } }) {
+      // Update the cache to reflect the updated car owner
+      cache.modify({
+        fields: {
+          people(existingPeopleRefs = [], { readField }) {
+            // Find the person who owns the updated car
+            const newPerson = existingPeopleRefs.find(
+              (personRef) => readField("id", personRef) === updateCar.personId
+            );
 
-  const { loading, error, data } = useQuery(GET_PEOPLE);
+            // Find the person who used to own the car
+            const oldPerson = existingPeopleRefs.find(
+              (personRef) => readField("id", personRef) === car.personId
+            );
+
+            // Remove the car from the old owner's cars
+            if (oldPerson) {
+              cache.modify({
+                id: cache.identify(oldPerson),
+                fields: {
+                  cars(existingCarRefs = [], { readField }) {
+                    return existingCarRefs.filter(
+                      (carRef) => readField("id", carRef) !== car.id
+                    );
+                  },
+                },
+              });
+            }
+
+            // Add the car to the new owner's cars
+            if (newPerson) {
+              cache.modify({
+                id: cache.identify(newPerson),
+                fields: {
+                  cars(existingCarRefs = []) {
+                    const newCarRef = cache.writeFragment({
+                      data: updateCar,
+                      fragment: gql`
+                        fragment NewCar on Car {
+                          id
+                          year
+                          make
+                          model
+                          price
+                          personId
+                        }
+                      `,
+                    });
+                    return [...existingCarRefs, newCarRef];
+                  },
+                },
+              });
+            }
+
+            return existingPeopleRefs;
+          },
+        },
+      });
+    },
+    refetchQueries: [{ query: GET_PEOPLE_AND_CARS }],
+  });
 
   const onFinish = (values) => {
     updateCar({
@@ -28,55 +77,70 @@ const EditCarForm = ({ car, onClose }) => {
         price: parseFloat(values.price),
         personId: values.personId,
       },
-    })
-      .then(() => {
-        onClose();
-      })
-      .catch((error) => {
-        console.error("Error updating car:", error);
-      });
+    });
+    onClose();
   };
-
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error :(</p>;
 
   return (
     <Form
       onFinish={onFinish}
-      initialValues={{
-        year: car.year,
-        make: car.make,
-        model: car.model,
-        price: car.price,
-        personId: car.personId,
-      }}
+      layout="vertical"
+      initialValues={{ ...car, personId: car.personId }}
     >
-      <Form.Item name="year" label="Year" rules={[{ required: true }]}>
-        <InputNumber />
+      <Form.Item
+        name="year"
+        label="Year"
+        rules={[
+          { required: true, message: "Please input the year of the car!" },
+        ]}
+      >
+        <InputNumber min={1886} max={new Date().getFullYear()} />
       </Form.Item>
-      <Form.Item name="make" label="Make" rules={[{ required: true }]}>
+      <Form.Item
+        name="make"
+        label="Make"
+        rules={[
+          { required: true, message: "Please input the make of the car!" },
+        ]}
+      >
         <Input />
       </Form.Item>
-      <Form.Item name="model" label="Model" rules={[{ required: true }]}>
+      <Form.Item
+        name="model"
+        label="Model"
+        rules={[
+          { required: true, message: "Please input the model of the car!" },
+        ]}
+      >
         <Input />
       </Form.Item>
-      <Form.Item name="price" label="Price" rules={[{ required: true }]}>
-        <InputNumber />
+      <Form.Item
+        name="price"
+        label="Price"
+        rules={[
+          { required: true, message: "Please input the price of the car!" },
+        ]}
+      >
+        <InputNumber min={0} step={0.01} />
       </Form.Item>
-      <Form.Item name="personId" label="Owner" rules={[{ required: true }]}>
-        <Select>
-          {data.people.map((person) => (
-            <Option key={person.id} value={person.id}>
+      <Form.Item
+        name="personId"
+        label="Person"
+        rules={[
+          { required: true, message: "Please select the owner of the car!" },
+        ]}
+      >
+        <Select placeholder="Select a person">
+          {people.map((person) => (
+            <Select.Option key={person.id} value={person.id}>
               {person.firstName} {person.lastName}
-            </Option>
+            </Select.Option>
           ))}
         </Select>
       </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType="submit">
-          Save
-        </Button>
-      </Form.Item>
+      <Button type="primary" htmlType="submit">
+        Update Car
+      </Button>
     </Form>
   );
 };
