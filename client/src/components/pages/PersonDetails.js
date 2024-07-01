@@ -1,39 +1,13 @@
 import React, { useState } from "react";
-import { useQuery, useMutation, gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { Card, Button, Modal, List } from "antd";
-import CarForm from "../forms/CarForm";
 import EditCarForm from "../forms/EditCarForm";
-
-const GET_PERSON_WITH_CARS = gql`
-  query GetPersonWithCars($id: ID!) {
-    person(id: $id) {
-      id
-      firstName
-      lastName
-      cars {
-        id
-        year
-        make
-        model
-        price
-      }
-    }
-  }
-`;
-
-const DELETE_CAR = gql`
-  mutation DeleteCar($id: ID!) {
-    deleteCar(id: $id) {
-      id
-    }
-  }
-`;
+import { GET_PERSON_WITH_CARS, DELETE_CAR } from "../../graphql/queries";
 
 const PersonDetails = ({ personId, onGoBack }) => {
   const { loading, error, data } = useQuery(GET_PERSON_WITH_CARS, {
     variables: { id: personId },
   });
-  const [isAdding, setIsAdding] = useState(false);
   const [editingCar, setEditingCar] = useState(null);
   const [deleteCar] = useMutation(DELETE_CAR, {
     update(cache, { data: { deleteCar } }) {
@@ -67,7 +41,6 @@ const PersonDetails = ({ personId, onGoBack }) => {
     <div>
       <Button onClick={onGoBack}>Go Back Home</Button>
       <Card title={`${person.firstName} ${person.lastName}`}>
-        <Button onClick={() => setIsAdding(true)}>Add Car</Button>
         <List
           itemLayout="horizontal"
           dataSource={person.cars}
@@ -88,15 +61,6 @@ const PersonDetails = ({ personId, onGoBack }) => {
           )}
         />
       </Card>
-
-      <Modal
-        visible={isAdding}
-        title="Add Car"
-        onCancel={() => setIsAdding(false)}
-        footer={null}
-      >
-        <CarForm personId={personId} onClose={() => setIsAdding(false)} />
-      </Modal>
 
       {editingCar && (
         <Modal

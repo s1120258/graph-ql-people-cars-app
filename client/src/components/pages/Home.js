@@ -4,41 +4,12 @@ import { Form, Input, Button, Card, Modal } from "antd";
 
 import EditPersonForm from "../forms/EditPersonForm";
 import PersonDetails from "./PersonDetails";
-
-const GET_PEOPLE_AND_CARS = gql`
-  query GetPeopleAndCars {
-    people {
-      id
-      firstName
-      lastName
-      cars {
-        id
-        year
-        make
-        model
-        price
-      }
-    }
-  }
-`;
-
-const ADD_PERSON = gql`
-  mutation AddPerson($firstName: String!, $lastName: String!) {
-    addPerson(firstName: $firstName, lastName: $lastName) {
-      id
-      firstName
-      lastName
-    }
-  }
-`;
-
-const DELETE_PERSON = gql`
-  mutation DeletePerson($id: ID!) {
-    deletePerson(id: $id) {
-      id
-    }
-  }
-`;
+import CarForm from "../forms/CarForm";
+import {
+  GET_PEOPLE_AND_CARS,
+  ADD_PERSON,
+  DELETE_PERSON,
+} from "../../graphql/queries";
 
 const Home = () => {
   const { loading, error, data } = useQuery(GET_PEOPLE_AND_CARS);
@@ -58,7 +29,7 @@ const Home = () => {
   const [selectedPersonId, setSelectedPersonId] = useState(null);
 
   if (loading) return <p>Loading...</p>;
-  if (error) return <p></p>;
+  if (error) return <p>Error : </p>;
 
   const handleAddPerson = (values) => {
     addPerson({
@@ -110,6 +81,8 @@ const Home = () => {
           Add Person
         </Button>
       </Form>
+
+      <CarForm people={data.people} onClose={() => {}} />
 
       {data.people.map((person) => (
         <Card

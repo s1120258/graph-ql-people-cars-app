@@ -1,14 +1,14 @@
 import React from "react";
 import { useMutation, gql } from "@apollo/client";
-import { Form, Input, InputNumber, Button } from "antd";
-import { ADD_CAR, GET_PERSON_WITH_CARS } from "../../graphql/queries";
+import { Form, Input, InputNumber, Button, Select } from "antd";
+import { GET_PEOPLE_AND_CARS, ADD_CAR } from "../../graphql/queries";
 
-const CarForm = ({ personId, onClose }) => {
+const CarForm = ({ people, onClose }) => {
   const [addCar] = useMutation(ADD_CAR, {
     update(cache, { data: { addCar } }) {
       cache.modify({
         fields: {
-          person(existingPersonRefs = {}) {
+          people(existingPeopleRefs = [], { readField }) {
             const newCarRef = cache.writeFragment({
               data: addCar,
               fragment: gql`
@@ -22,19 +22,22 @@ const CarForm = ({ personId, onClose }) => {
                 }
               `,
             });
-            return {
-              ...existingPersonRefs,
-              cars: existingPersonRefs.cars
-                ? [...existingPersonRefs.cars, newCarRef]
-                : [newCarRef],
-            };
+
+            return existingPeopleRefs.map((personRef) => {
+              if (readField("id", personRef) === addCar.personId) {
+                return {
+                  ...personRef,
+                  cars: [...readField("cars", personRef), newCarRef],
+                };
+              } else {
+                return personRef;
+              }
+            });
           },
         },
       });
     },
-    refetchQueries: [
-      { query: GET_PERSON_WITH_CARS, variables: { id: personId } },
-    ],
+    refetchQueries: [{ query: GET_PEOPLE_AND_CARS }],
   });
 
   const onFinish = (values) => {
@@ -44,7 +47,7 @@ const CarForm = ({ personId, onClose }) => {
         make: values.make,
         model: values.model,
         price: parseFloat(values.price),
-        personId,
+        personId: values.personId,
       },
     });
     onClose();
@@ -88,11 +91,24 @@ const CarForm = ({ personId, onClose }) => {
       >
         <InputNumber min={0} step={0.01} />
       </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType="submit">
-          Add Car
-        </Button>
+      <Form.Item
+        name="personId"
+        label="Person"
+        rules={[
+          { required: true, message: "Please select the owner of the car!" },
+        ]}
+      >
+        <Select placeholder="Select a person">
+          {people.map((person) => (
+            <Select.Option key={person.id} value={person.id}>
+              {person.firstName} {person.lastName}
+            </Select.Option>
+          ))}
+        </Select>
       </Form.Item>
+      <Button type="primary" htmlType="submit">
+        Add Car
+      </Button>
     </Form>
   );
 };
